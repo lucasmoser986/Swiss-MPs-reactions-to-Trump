@@ -1,0 +1,188 @@
+---
+title: "Politischer Datenjournalismus: Reaktion Schweizer Parlamentarier:innen auf Trump"
+author: "Lucas Moser"
+format:
+  html:
+    toc-title: Table of contents
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    highlight-style: github
+    toc-location: body
+    cap-location: top
+    page-layout: full
+    embed-resources: true
+    self-contained-math: true
+    toc-expand: true
+editor: visual
+execute:
+  echo: false
+  warning: false
+knitr:
+  opts_chunk:
+    message: false
+---
+
+```{r}
+#Load and prepare data (MPs' bills mentioning Trump from Swiss Parliament API through swissparl package)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(huxtable)
+library(swissparl)
+library(xlsx)
+library(stringr)
+
+party_colors = c("SP" = "#F0554D", "Mitte" = "#B56100", "GPS" = "#84B547", "SVP" = "#4B8A3E", "FDP" = "#3872B5")
+if (FALSE) {
+dtb = get_data(table = "Business", SubmissionDate = ">2024-09-01", Language = "DE")
+dtb = dtb[,c(3, 5, 7, 12, 13, 20, 31)]
+dtb$text = paste(dtb$Title, dtb$SubmittedText, sep = ":")
+dtb$text = clean_text(paste(dtb$text, dtb$ReasonText))
+dtb = dtb[, c(1:2, 6:8)]
+colnames(dtb) = c("id", "type", "mp", "date", "text")
+dtb = dtb[which(grepl("Trump", dtb$text)),]
+
+dtm = get_data("MemberParlGroup", Language = "DE")
+dtm$name = paste(dtm$LastName, dtm$FirstName)
+dtm = dtm[, c(24, 17)]
+
+dtb = left_join(dtb, dtm, by = join_by(mp == name))[, c(1:3, 6, 4, 5)]
+colnames(dtb)[4] = "party"
+dtb$party = substr(dtb$party, 10, nchar(dtb$party))
+dtb$party[c(8, 20, 25, 26)] = c("S", "G", "RL", "G")
+dtb$party = case_match(dtb$party, "G" ~ "GPS", "M-E" ~ "Mitte", "RL" ~ "FDP", "S" ~ "SP", "V" ~ "SVP")
+dtb$topic = rep("")
+dtb$stance = rep("")
+dtb = dtb[, c(1:5, 7:8, 6)]
+
+write.xlsx(dtb, "trump_bills.xlsx")   #assign topics and stances by hand
+}
+```
+
+
+```{r, fig.height=10, fig.width=10}
+#load full data
+dtb = read.xlsx("trump_bills.xlsx", sheetIndex = 1)
+dtb = dtb[which(dtb$topic != "x"),]    #exclude not primarily about trump
+
+#Arten von Geschäften:
+sort(table(dtb$type), decreasing = T)
+
+#Häufigste Parlamentarier:innen
+sort(table(dtb$mp), decreasing = T)
+
+#Sessionen
+dtb$month = factor(case_match(substr(as.character(dtb$date), 6, 7),
+                              "12" ~ "Dezember", "03" ~ "März", "05" ~ "Mai", "06" ~ "Juni"),
+                   levels = c("Dezember", "März", "Mai", "Juni"))
+table(dtb$month)
+
+#Parteien
+dtb$party = factor(dtb$party, levels = names(sort(table(dtb$party), decreasing = T)))
+table(dtb$party)
+
+#Themen
+topics = unname(unlist(str_split(str_c(dtb$topic, collapse = ", "), ", ")))
+sort(table(topics), decreasing = T)
+
+#######LÖSCHEN
+#GPS
+dtb_gps = dtb[which(dtb$party == "GPS"),]
+topics_gps = unname(unlist(str_split(str_c(dtb_gps$topic, collapse = ", "), ", ")))
+sort(table(topics_gps), decreasing = T)
+sort(table(dtb_gps$stance), decreasing = T)
+
+#SP
+dtb_sp = dtb[which(dtb$party == "SP"),]
+topics_sp = unname(unlist(str_split(str_c(dtb_sp$topic, collapse = ", "), ", ")))
+sort(table(topics_sp), decreasing = T)
+sort(table(dtb_sp$stance), decreasing = T)
+
+#SVP
+dtb_svp = dtb[which(dtb$party == "SVP"),]
+topics_svp = unname(unlist(str_split(str_c(dtb_svp$topic, collapse = ", "), ", ")))
+sort(table(topics_svp), decreasing = T)
+sort(table(dtb_svp$stance), decreasing = T)
+
+#Mitte & FDP
+dtb_mf = dtb[which(dtb$party %in% c("FDP", "Mitte")),]
+topics_mf = unname(unlist(str_split(str_c(dtb_mf$topic, collapse = ", "), ", ")))
+sort(table(topics_mf), decreasing = T)
+sort(table(dtb_mf$stance), decreasing = T)
+########
+
+#Make lollipop or barplot for topics per party
+dtb_topics = data.frame(topic = rep(names(sort(table(topics), decreasing = T)), 5),
+                        party = rep(c("GPS", "SP", "Mitte", "FDP", "SVP"), each = length(unique(topics))))
+dtb_topics$value = mapply(FUN = function(x,y) {length(grep(x, unname(unlist(str_split(
+  str_c(dtb$topic[which(dtb$party == y)], collapse = ", "), ", ")))))}, dtb_topics$topic, dtb_topics$party)
+
+topics_g = case_match(topics, "transgender" ~ "Transrechte", "banking" ~ "Banking",
+                              "communication" ~ "Kommunikation", "socialmedia" ~ "Social Media", "ukraine" ~ "Ukraine",
+                              "authoritarianism" ~ "Autoritarismus", "palestine" ~ "Palästina", "tariffs" ~ "Zölle",
+                              "international" ~ "Internationale Organisationen", "security" ~ "Sicherheit")
+
+dtb_topics$topic = case_match(dtb_topics$topic, "transgender" ~ "Transrechte", "banking" ~ "Banking",
+                              "communication" ~ "Kommunikation", "socialmedia" ~ "Social Media", "ukraine" ~ "Ukraine",
+                              "authoritarianism" ~ "Autoritarismus", "palestine" ~ "Palästina", "tariffs" ~ "Zölle",
+                              "international" ~ "Internationale Organisationen", "security" ~ "Sicherheit")
+dtb_topics$topic = factor(dtb_topics$topic, levels = names(sort(table(topics_g), decreasing = F)))
+dtb_topics$party = factor(dtb_topics$party, levels = names(sort(table(dtb$party), decreasing = T)))
+
+ggplot(dtb_topics) +
+  geom_segment( aes(x=topic, xend=topic, y=0, yend=value, color=party)) +
+  geom_point( aes(x=topic, y=value, color=party), size=3 ) +
+  scale_color_manual(values = party_colors) +
+  coord_flip() +
+  scale_y_continuous(expand = c(0.02,0), breaks = 0:6, minor_breaks = 0:6) +
+  theme(
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.spacing = unit(0.1, "lines"),
+    strip.text.x = element_text(size = 8)
+  ) + theme_minimal() +
+  labs(title = "Abbildung X: Anzahl Trump erwähnende Vorstösse nach Partei und Thema", 
+       x = "", y = "") +
+  guides(color = "none") +
+  facet_wrap(~party, ncol=2, scale="free_y", labeller = labeller(party = 
+    c("GPS" = "GPS (15 Vorstösse)", "SP" = "SP (14 Vorstösse)", "SVP" = "SVP (4 Vorstösse)",
+      "Mitte" = "Mitte (2 Vorstösse)", "FDP" = "FDP (1 Vorstoss)")))
+
+```
+```{r}
+#Haltungen
+dtb$stance = factor(case_match(dtb$stance, c("divestment", "europe") ~ "Neuorientierung",
+                               "confrontation" ~ "Konfrontation", "preparedness" ~ "Bereitschaft",
+                               "stepping up" ~ "Kompensation", c("following", "cooperation") ~ "Entgegenkommen"),
+                    levels = c("Neuorientierung", "Bereitschaft", "Kompensation", "Konfrontation", "Entgegenkommen"))
+table(dtb$stance)
+table(dtb$stance, dtb$party)
+
+dtb2 = na.omit(dtb)
+dtb2$party = factor(dtb2$party, levels = c("GPS", "SP", "Mitte", "FDP", "SVP"))
+dtb2$stance = factor(dtb2$stance, levels = c("Neuorientierung", "Kompensation", "Konfrontation", "Bereitschaft", 
+                                             "Entgegenkommen"))
+colnames(dtb2)[c(4,7)] = c("Partei", "Haltung")
+
+dtb_stances = dtb2 %>% group_by(Haltung, Partei, .drop = F) %>% summarise(count = n(), .groups = "drop")
+ggplot(dtb_stances, aes(fill = Partei, y = count, x = Haltung)) + geom_bar(position = "dodge", stat = "identity") + 
+  scale_fill_manual(values = party_colors) +
+  labs(title = "Abbildung X: Anzahl Trump erwähnende Vorstösse nach Partei und Haltung", y = "")
+```
+
+
+
+
+```{r}
+#Timeline plot
+ggplot(data = dtb, aes(x = date, fill = party)) + geom_histogram(bins = 120) +
+  scale_fill_manual("", values = party_colors) + scale_y_continuous(expand = c(0,0), breaks = c(0, 2, 4, 6, 8)) +
+  scale_x_date(date_labels = "%m-%Y", breaks = sort(c(seq(as.Date("2024-12-01"), length=8, by="month")))) +
+  geom_vline(xintercept = as.Date("2025-01-20")) + geom_vline(xintercept = as.Date("2025-04-02")) +
+  geom_text(aes(x=as.Date("2025-01-20"), label="\nAmtsantritt", y=6.5), colour="red", angle=90) + 
+  geom_text(aes(x=as.Date("2025-04-02"), label="\n\nLiberation Day\n(Zollankündigung)", y=6.5), colour="red", angle=90)
+```
+
+
+
