@@ -34,9 +34,10 @@ library(xlsx)
 library(stringr)
 
 party_colors = c("SP" = "#F0554D", "Mitte" = "#B56100", "GPS" = "#84B547", "SVP" = "#4B8A3E", "FDP" = "#3872B5")
-if (FALSE) {
-dtb = get_data(table = "Business", SubmissionDate = ">2024-09-01", Language = "DE")
-dtb = dtb[,c(3, 5, 7, 12, 13, 20, 31)]
+if (FALSE) {   #pepare bill data for manual assignment of topics and stances
+dtb = get_data(table = "Business", SubmissionDate = ">2024-11-04", Language = "DE")
+dtb = dtb[which(!(dtb$BusinessTypeName %in% c("Geschäft des Bundesrates", "Petition", "Standesinitiative",
+                                              "Geschäft des Parlaments"))),c(3, 5, 7, 12, 13, 20, 31)]
 dtb$text = paste(dtb$Title, dtb$SubmittedText, sep = ":")
 dtb$text = clean_text(paste(dtb$text, dtb$ReasonText))
 dtb = dtb[, c(1:2, 6:8)]
@@ -61,58 +62,47 @@ write.xlsx(dtb, "trump_bills.xlsx")   #assign topics and stances by hand
 ```
 
 
-```{r, fig.height=10, fig.width=10}
+```{r}
 #load full data
 dtb = read.xlsx("trump_bills.xlsx", sheetIndex = 1)
 dtb = dtb[which(dtb$topic != "x"),]    #exclude not primarily about trump
 
 #Arten von Geschäften:
-sort(table(dtb$type), decreasing = T)
+#sort(table(dtb$type), decreasing = T)
 
 #Häufigste Parlamentarier:innen
-sort(table(dtb$mp), decreasing = T)
+#sort(table(dtb$mp), decreasing = T)
 
 #Sessionen
 dtb$month = factor(case_match(substr(as.character(dtb$date), 6, 7),
-                              "12" ~ "Dezember", "03" ~ "März", "05" ~ "Mai", "06" ~ "Juni"),
-                   levels = c("Dezember", "März", "Mai", "Juni"))
-table(dtb$month)
+                              "12" ~ "Dezember 2024", "03" ~ "März 2025", "05" ~ "Mai 2025", "06" ~ "Juni 2025"),
+                   levels = rev(c("Dezember 2024", "März 2025", "Mai 2025", "Juni 2025")))
+dts = data.frame(table(dtb$month))
+colnames(dts) = c("Monat", "count")
+plot_sessions = ggplot(dts) +
+  geom_segment(aes(x=Monat, xend=Monat, y=0, yend=count)) +
+  geom_point(aes(x=Monat, y=count), size=3 ) +
+  coord_flip() +
+  scale_y_continuous(expand = c(0.02,0)) +
+  theme(
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.spacing = unit(0.1, "lines"),
+    strip.text.x = element_text(size = 8),
+    aspect.ratio = 0.01
+  ) + theme_minimal() +
+  labs(title = "Anzahl Trump erwähnende Vorstösse\nnach Session", x = "", y = "")
 
 #Parteien
 dtb$party = factor(dtb$party, levels = names(sort(table(dtb$party), decreasing = T)))
-table(dtb$party)
+#table(dtb$party)
 
 #Themen
 topics = unname(unlist(str_split(str_c(dtb$topic, collapse = ", "), ", ")))
-sort(table(topics), decreasing = T)
+#sort(table(topics), decreasing = T)
 
-#######LÖSCHEN
-#GPS
-dtb_gps = dtb[which(dtb$party == "GPS"),]
-topics_gps = unname(unlist(str_split(str_c(dtb_gps$topic, collapse = ", "), ", ")))
-sort(table(topics_gps), decreasing = T)
-sort(table(dtb_gps$stance), decreasing = T)
 
-#SP
-dtb_sp = dtb[which(dtb$party == "SP"),]
-topics_sp = unname(unlist(str_split(str_c(dtb_sp$topic, collapse = ", "), ", ")))
-sort(table(topics_sp), decreasing = T)
-sort(table(dtb_sp$stance), decreasing = T)
-
-#SVP
-dtb_svp = dtb[which(dtb$party == "SVP"),]
-topics_svp = unname(unlist(str_split(str_c(dtb_svp$topic, collapse = ", "), ", ")))
-sort(table(topics_svp), decreasing = T)
-sort(table(dtb_svp$stance), decreasing = T)
-
-#Mitte & FDP
-dtb_mf = dtb[which(dtb$party %in% c("FDP", "Mitte")),]
-topics_mf = unname(unlist(str_split(str_c(dtb_mf$topic, collapse = ", "), ", ")))
-sort(table(topics_mf), decreasing = T)
-sort(table(dtb_mf$stance), decreasing = T)
-########
-
-#Make lollipop or barplot for topics per party
+#Themen nach Partei
 dtb_topics = data.frame(topic = rep(names(sort(table(topics), decreasing = T)), 5),
                         party = rep(c("GPS", "SP", "Mitte", "FDP", "SVP"), each = length(unique(topics))))
 dtb_topics$value = mapply(FUN = function(x,y) {length(grep(x, unname(unlist(str_split(
@@ -130,7 +120,7 @@ dtb_topics$topic = case_match(dtb_topics$topic, "transgender" ~ "Transrechte", "
 dtb_topics$topic = factor(dtb_topics$topic, levels = names(sort(table(topics_g), decreasing = F)))
 dtb_topics$party = factor(dtb_topics$party, levels = names(sort(table(dtb$party), decreasing = T)))
 
-ggplot(dtb_topics) +
+plot_topics = ggplot(dtb_topics) +
   geom_segment( aes(x=topic, xend=topic, y=0, yend=value, color=party)) +
   geom_point( aes(x=topic, y=value, color=party), size=3 ) +
   scale_color_manual(values = party_colors) +
@@ -142,22 +132,21 @@ ggplot(dtb_topics) +
     panel.spacing = unit(0.1, "lines"),
     strip.text.x = element_text(size = 8)
   ) + theme_minimal() +
-  labs(title = "Abbildung X: Anzahl Trump erwähnende Vorstösse nach Partei und Thema", 
+  labs(title = "Anzahl Trump erwähnende Vorstösse nach Partei und Thema", 
        x = "", y = "") +
   guides(color = "none") +
   facet_wrap(~party, ncol=2, scale="free_y", labeller = labeller(party = 
     c("GPS" = "GPS (15 Vorstösse)", "SP" = "SP (14 Vorstösse)", "SVP" = "SVP (4 Vorstösse)",
       "Mitte" = "Mitte (2 Vorstösse)", "FDP" = "FDP (1 Vorstoss)")))
 
-```
-```{r}
+
 #Haltungen
 dtb$stance = factor(case_match(dtb$stance, c("divestment", "europe") ~ "Neuorientierung",
                                "confrontation" ~ "Konfrontation", "preparedness" ~ "Bereitschaft",
                                "stepping up" ~ "Kompensation", c("following", "cooperation") ~ "Entgegenkommen"),
                     levels = c("Neuorientierung", "Bereitschaft", "Kompensation", "Konfrontation", "Entgegenkommen"))
-table(dtb$stance)
-table(dtb$stance, dtb$party)
+#table(dtb$stance)
+#table(dtb$stance, dtb$party)
 
 dtb2 = na.omit(dtb)
 dtb2$party = factor(dtb2$party, levels = c("GPS", "SP", "Mitte", "FDP", "SVP"))
@@ -166,23 +155,70 @@ dtb2$stance = factor(dtb2$stance, levels = c("Neuorientierung", "Kompensation", 
 colnames(dtb2)[c(4,7)] = c("Partei", "Haltung")
 
 dtb_stances = dtb2 %>% group_by(Haltung, Partei, .drop = F) %>% summarise(count = n(), .groups = "drop")
-ggplot(dtb_stances, aes(fill = Partei, y = count, x = Haltung)) + geom_bar(position = "dodge", stat = "identity") + 
-  scale_fill_manual(values = party_colors) +
-  labs(title = "Abbildung X: Anzahl Trump erwähnende Vorstösse nach Partei und Haltung", y = "")
+plot_stances = ggplot(dtb_stances, aes(fill = Partei, y = count, x = Haltung)) +
+  geom_bar(position = "dodge",stat = "identity") + scale_fill_manual(values = party_colors) +
+  scale_y_continuous(expand = c(0,0), limits = c(0,8)) +
+  labs(title = "Anzahl Trump erwähnende Vorstösse\nnach Partei und Haltung", y = "")
+
+
+#Wähler:innen (Leewas Umfrage: https://drive.google.com/file/d/1Z0MjrN-ErJHZbY73tnNGiG7drELZrR7Y/view)
+dtv = data.frame(Partei = factor(rep(c("FDP", "Mitte", "SP", "SVP", "GPS"), 4),
+                                    levels = c("GPS", "SP", "Mitte", "FDP", "SVP")),
+                    Frage = factor(rep(c("Trump", "Zollpolitik", "Kürzungen Entwicklungshilfe", "F-35-Kauf"), each = 5),
+                                   levels = c("Trump", "Zollpolitik", "Kürzungen Entwicklungshilfe", "F-35-Kauf")),
+                    value1 = c(17, 13, 5, 13, 4, 19, 17, 10, 23, 10,
+                               36, 31, 14, 28, 12, 25, 26, 21, 16, 22),
+                    value2 = c(68, 80, 90, 46, 91, 73, 78, 84, 49, 84,
+                               42, 54, 80, 19, 82, 30, 36, 63, 35, 67))
+dtv$value = (dtv$value1 + dtv$value2) / 100
+dtv$value_pos = 1 - dtv$value
+plot_voters = ggplot(dtv, aes(fill = Partei, y = value, x = Frage)) + geom_bar(position = "dodge", stat = "identity") +
+  scale_fill_manual(values = party_colors) + 
+  scale_y_continuous(labels = scales::percent, breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1),
+                     limits = c(0,1), expand = c(0,0)) +
+  labs(title = "Anteil Befragte mit (eher) negativer Einstellung zu\nverschiedenen Issues, nach Partepräferenz",
+       y = "")
+
 ```
 
+## Vorstösse pro Session
+```{r, fig.height=4}
+plot_sessions
+```
+
+36 Vorstösse seit Wahl am 05.11.24, von insgesamt über 2300 Vorstössen, 3 Fraktionen (GPS, SP, FDP) und 21 MPs
+27 Fragen an BR (Fragestunde, Anfrage, Interpellationen), 9 Motionen / Postulate
+Meiste Vorstösse im März, noch vor Liberation Day am 02.04., an dem 41% Zölle auf alle Schweizer Importe angekündigt wurden. Die meisten Zölle wurden eine Woche später dann für drei Monate pausiert, damit betroffene Länder mit den USA verhandeln können. Die Zölle sollen am 09.07. wieder in Kraft treten, 4 der 5 Vorstösse vom Juni betreffen demnach auch die Zölle.
+
+## Parteien und Themen
+```{r, fig.height=10, fig.width=10}
+plot_topics
+```
+
+Grosse Mehrheit der Vorstösse von der Linken, zu verschiedenen Themen: Sicherheitspolitik (Zusammenarbeit EU, Unabhängigkeit USA, F-35-Kauf), internationale Organisationen und Zusammenarbeit (Betroffenheit Genfs mit Sitz vieler Organisationen, Annäherung an EU)
 
 
 
+Nur 6 Vorstösse von bürgerlicher Seite, hauptsächlich zu Themen Zölle, internationale Organisationen und Kommunikation mit der Trump-Regierung.
+
+
+## Parteien und Haltungen
 ```{r}
-#Timeline plot
-ggplot(data = dtb, aes(x = date, fill = party)) + geom_histogram(bins = 120) +
-  scale_fill_manual("", values = party_colors) + scale_y_continuous(expand = c(0,0), breaks = c(0, 2, 4, 6, 8)) +
-  scale_x_date(date_labels = "%m-%Y", breaks = sort(c(seq(as.Date("2024-12-01"), length=8, by="month")))) +
-  geom_vline(xintercept = as.Date("2025-01-20")) + geom_vline(xintercept = as.Date("2025-04-02")) +
-  geom_text(aes(x=as.Date("2025-01-20"), label="\nAmtsantritt", y=6.5), colour="red", angle=90) + 
-  geom_text(aes(x=as.Date("2025-04-02"), label="\n\nLiberation Day\n(Zollankündigung)", y=6.5), colour="red", angle=90)
+plot_stances
 ```
 
 
+## Einstellungen der Wähler:innen
+```{r}
+plot_voters
+```
+Wähler:innen aller Parteien grossmehrheitlich kritisch gegenüber Trump, seiner Wirtschaftspolitik, seiner Entwicklungshilfe-Kürzungen und mehrheitlich ablehnend gegenüber F-35-Kauf und für sicherheitspolitische Zusammenarbeit mit der EU (SVP bisschen weniger als andere)
+
+
+
+
+
+## Quellen
+Daten Vorstösse: Das Schweizer Parlament: Web Services of the Swiss Parliament (2025, https://ws-old.parlament.ch/), swissparl R-package (Zumbach & Gföhler 2022)
+Daten Umfrage: "Umfrage zu Donald Trump" (LeeWas GmbH, 2025, https://drive.google.com/file/d/1Z0MjrN-ErJHZbY73tnNGiG7drELZrR7Y/view)
 
