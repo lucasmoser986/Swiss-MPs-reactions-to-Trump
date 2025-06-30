@@ -1,12 +1,10 @@
 ---
-title: "Politischer Datenjournalismus: Reaktion Schweizer Parlamentarier:innen auf Trump"
+title: "Trump polarisiert auch das Schweizer Parlament"
+subtitle: "Forschungsseminar Politischer Datenjournalismus (FS 2025)"
 author: "Lucas Moser"
 format:
   html:
-    toc-title: Table of contents
-    toc: true
-    toc-depth: 2
-    number-sections: true
+    number-sections: false
     highlight-style: github
     toc-location: body
     cap-location: top
@@ -60,7 +58,6 @@ dtb = dtb[, c(1:5, 7:8, 6)]
 write.xlsx(dtb, "trump_bills.xlsx")   #assign topics and stances by hand
 }
 ```
-
 
 ```{r}
 #load full data
@@ -176,49 +173,49 @@ plot_voters = ggplot(dtv, aes(fill = Partei, y = value, x = Frage)) + geom_bar(p
   scale_fill_manual(values = party_colors) + 
   scale_y_continuous(labels = scales::percent, breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1),
                      limits = c(0,1), expand = c(0,0)) +
-  labs(title = "Anteil Befragte mit (eher) negativer Einstellung zu\nverschiedenen Issues, nach Partepräferenz",
-       y = "")
+  labs(title = "Anteil Befragte mit (eher) negativer Einstellung zu\nverschiedenen Issues, nach Parteipräferenz",
+       y = "", x = "Issue")
 
 ```
 
-## Vorstösse pro Session
+***Schweizer Parlamentarier:innen und Parteien reagieren unterschiedlich auf Trumps Rückkehr an die Macht. Eine Seite hat dabei mehr zu sagen.*** <br> <br>Die Trump-Regierung hat in der Wirtschafts-, Aussen- und Migrationspolitik einen starken politischen Umschwung eingeläutet. Viele seiner Änderungen betreffen auch die Schweiz: Am „Liberation Day“ am 4. April kündigte er Einfuhrzölle in der Höhe von 41% auf alle Schweizer Importe an, deren Inkrafttreten verschob er kurz später. Seine Kürzungen der Entwicklungshilfe treffen internationale Organisationen mit Sitz in Genf. Und mit dem Kauf der F-35-Kampfjets droht eine grössere Abhängigkeit der Schweiz von der USA unter der unberechenbaren Führung Trumps. Angesichts dieser angespannten Lage stellt sich die Frage, wie Schweizer Parlamentarier auf Trumps Comeback reagieren. Eine Auswertung zeigt, dass Trump im Bundeshaus rege thematisiert wird.
+
+## Mehrheit der Trump-Vorstösse in der Frühlingssession
+
+Seit Trumps Wiederwahl im November letzten Jahres wurden im Parlament 36 Vorstösse eingereicht, die Trump thematisieren (bei insgesamt über 2300 Vorstössen), von 21 Parlamentarier:innen und drei Fraktionen (Grüne, SP und FDP). Diese setzen sich zusammen aus 27 Fragen an den Bundesrat und 9 Motionen oder Postulaten (Vorstösse, die Gesetzesänderungen anstreben). Die untenstehende Tabelle zeigt, wann die Vorstösse eingereicht wurden. Zwei Drittel der Vorstösse erfolgten in der Frühlingssession, der ersten Session nach Trumps Amtsantritt, als Trump bereits mit Zöllen und der Kürzung von Entwicklungshilfe gedroht hatte. In den nachfolgenden Sessionen wurden nur noch 4 bzw. 5 Vorstösse eingereicht. Überraschend angesichts der Tatsache, dass die angekündigten Einfuhrzölle – sofern Trump nicht wieder umschwenkt – am 9. Juli in Kraft treten sollen.
+
 ```{r, fig.height=4}
 plot_sessions
 ```
 
-36 Vorstösse seit Wahl am 05.11.24, von insgesamt über 2300 Vorstössen, 3 Fraktionen (GPS, SP, FDP) und 21 MPs
-27 Fragen an BR (Fragestunde, Anfrage, Interpellationen), 9 Motionen / Postulate
-Meiste Vorstösse im März, noch vor Liberation Day am 02.04., an dem 41% Zölle auf alle Schweizer Importe angekündigt wurden. Die meisten Zölle wurden eine Woche später dann für drei Monate pausiert, damit betroffene Länder mit den USA verhandeln können. Die Zölle sollen am 09.07. wieder in Kraft treten, 4 der 5 Vorstösse vom Juni betreffen demnach auch die Zölle.
+## Grüne und SP äussern sich weitaus öfter zu Trump
 
-## Parteien und Themen
+Die untenstehende Grafik zeigt, wie oft sich die Parteien in Bezug auf Trump zu welchen Themen äussern. Mehr als zwei Drittel der Vorstösse zu Trump kommen von den linken Parteien. SP und die Grünen äussern sich 14 bzw. 15 Mal zu einer Breite an Themen. In der Sicherheitspolitik kritisieren sie den F-35-Kauf und plädieren für mehr Zusammenarbeit mit der EU, da die USA keinen verlässlichen Schutz mehr biete. In der Aussenpolitik setzen sie sich für mehr Unterstützung für Palästina, die Ukraine und die internationalen Organisationen in Genf ein, die sich unter Trump nun alle in brenzligerer Lage befinden. Darüber hinaus sprechen die Grünen über die Gefahr von Trumps autoritärem Regieren und die SP über Regulierung von Banken und (vorwiegend amerikanischen) Social Media Konzernen, sowie über die Kommunikation zwischen dem Bundesrat und der US-Regierung. <br> Auf der bürgerlichen Seite hingegen liegen nur sieben Vorstösse zu Trump vor, vier von der SVP, zwei von der Mitte und einer von der FDP. Sie äussern sich hauptsächlich zu den Einfuhrzöllen. Darüber hinaus liegen im Bereich der internationalen Organisationen und der Transrechte zwei bzw. ein SVP-Vorstoss vor, die eine Nachahmung der Trump-Politik fordern: Die Schweiz soll aus der WHO austreten, von der OECD-Mindeststeuer ablassen und die medizinischen Behandlungsmöglichkeiten von transgender Jugendlichen einschränken.
+
 ```{r, fig.height=10, fig.width=10}
 plot_topics
 ```
 
-Grosse Mehrheit der Vorstösse von der Linken, zu verschiedenen Themen: Sicherheitspolitik (Zusammenarbeit EU, Unabhängigkeit USA, F-35-Kauf), internationale Organisationen und Zusammenarbeit (Betroffenheit Genfs mit Sitz vieler Organisationen, Annäherung an EU)
+## Die Bürgerlichen Parteien wollen sich nicht gegen Trump auflehnen
 
+Neben den drei Vorstössen der SVP, die fordern, Trumps Politik zu übernehmen, äussern sich auch die anderen Vorstösse der Bürgerlichen nicht kritisch gegenüber dem US-Präsidenten. Sie plädieren entweder für Kooperation mit den USA oder dafür, dass sich der Bundesrat auf Trumps erratische Politik vorbereitet. Wie man erwarten kann, nehmen die Vorstösse der linken Parteien die entgegengesetzte Haltung an. Sie äussern sich auch für Bereitschaft des Bundesrats, darüber hinaus aber auch für Konfrontation gegenüber Trump (beispielsweise durch Regulierung der Social Media Konzerne, Stärkung von Diversity-Policies oder Einführung von Gegenzöllen), dafür dass die Schweiz die ausfallenden Hilfeleistungen der USA kompensiert und für eine Neuorientierung der Schweiz, weg von der USA und hin zu mehr Zusammenarbeit mit der EU.
 
-
-Nur 6 Vorstösse von bürgerlicher Seite, hauptsächlich zu Themen Zölle, internationale Organisationen und Kommunikation mit der Trump-Regierung.
-
-
-## Parteien und Haltungen
 ```{r}
 plot_stances
 ```
 
+## Die Schweizer Bevölkerung sieht Trump und seine Politik kritisch
 
-## Einstellungen der Wähler:innen
+Während Parlamentarier:innen und Parteien unterschiedlich auf Trump reagieren, ist die Haltung der Schweizer Bevölkerung weniger gespalten. Grosse Mehrheiten von Sympathisant:innen von Grünen bis FDP haben eine negative oder eher negative Einstellung zu Trump, seiner Zollpolitik und seinen Kürzungen der Entwicklungshilfe. Auch eine Mehrheit bei der SVP sieht Trump und seine Zollpolitik negativ. Mit ihrer zurückhaltenden Haltung politisieren die bürgerlichen Parteien also an ihrer Basis vorbei.
+
 ```{r}
 plot_voters
 ```
-Wähler:innen aller Parteien grossmehrheitlich kritisch gegenüber Trump, seiner Wirtschaftspolitik, seiner Entwicklungshilfe-Kürzungen und mehrheitlich ablehnend gegenüber F-35-Kauf und für sicherheitspolitische Zusammenarbeit mit der EU (SVP bisschen weniger als andere)
-
-
-
-
 
 ## Quellen
-Daten Vorstösse: Das Schweizer Parlament: Web Services of the Swiss Parliament (2025, https://ws-old.parlament.ch/), swissparl R-package (Zumbach & Gföhler 2022)
-Daten Umfrage: "Umfrage zu Donald Trump" (LeeWas GmbH, 2025, https://drive.google.com/file/d/1Z0MjrN-ErJHZbY73tnNGiG7drELZrR7Y/view)
 
+Das Schweizer Parlament (2025): Web Services of the Swiss Parliament (https://ws-old.parlament.ch/) <br> LeeWas GmbH (2025): Umfrage zu Donald Trump (https://drive.google.com/file/d/1Z0MjrN-ErJHZbY73tnNGiG7drELZrR7Y/view)
+
+## Validität
+
+Die Daten zu den parlamentarischen Vorstössen wurden mit dem R-package swissparl von der API der Parlamentsdienste bezogen. Es wurden alle Vorstösse, die das Stichwort „Trump“ enthalten ausgewählt. Es ist also möglich, dass Vorstösse nicht analysiert wurden, die zwar Trumps Regierung thematisieren, ihn aber nicht direkt nennen. Die Vorstösse wurden von mir von Hand den Themen und Haltungen zugewiesen. Ich habe drei Vorstösse ausgeschlossen, die Trump nur nebensächlich erwähnen (bzw. sich nicht zu seiner Politik äussern), für den Rest der Vorstösse war die Zuteilung meist trivial. Trotzdem ist es möglich, dass jemand anderes eine leicht abweichende Zuteilung machen würde, was die Resultate beeinflussen würde. <br> Die Umfragedaten zur Einstellungen der Schweizer Bevölkerung zu Trump stammen aus der „Umfrage zu Donald Trump“ von LeeWas. An der Umfrage teilnehmen konnten Leser:innen von 20 Minuten und Tamedia-Zeitungen. Daher handelt es sich nicht um eine Zufallsstichprobe, die Resultate wurden aber nach soziodemografischen Variablen gewichtet (Geschlecht, Parteipräferenz, Sprachregion, Siedlungstyp). Der Stichprobenfehler beträgt 1.7 Prozentpunkte. <br> R-Code und Daten können unter https://github.com/lucasmoser986/Swiss-MPs-reactions-to-Trump heruntergeladen werden.
