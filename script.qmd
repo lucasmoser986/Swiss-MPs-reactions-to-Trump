@@ -204,7 +204,7 @@ plot_topics
 
 Neben den drei Vorstössen der SVP, die fordern, Trumps Politik zu übernehmen, äussern sich auch die anderen Vorstösse der Bürgerlichen nicht kritisch gegenüber dem US-Präsidenten. Sie plädieren entweder für Kooperation mit den USA oder dafür, dass sich der Bundesrat auf Trumps erratische Politik vorbereitet. Wie man erwarten kann, nehmen die Vorstösse der linken Parteien die entgegengesetzte Haltung an. Sie äussern sich auch für Bereitschaft des Bundesrats, darüber hinaus aber auch für Konfrontation gegenüber Trump (beispielsweise durch Regulierung der Social Media Konzerne, Stärkung von Diversity-Policies oder Einführung von Gegenzöllen), dafür dass die Schweiz die ausfallenden Hilfeleistungen der USA kompensiert und für eine Neuorientierung der Schweiz, weg von der USA und hin zu mehr Zusammenarbeit mit der EU.
 
-```{r}
+```{r, fig.width=8}
 plot_stances
 ```
 
