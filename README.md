@@ -1,3 +1,2 @@
 This projects examines Swiss MPs' reactions to Trump's election and governance. I analyze all bills submitted by MPs mentioning Trump on topic and stance.
-I find that left wing parties submit bills mentioning Trump a lot more, focusing on a range of topics (security, tariffs, authoritarianism, ukraine, palestine).
-WORK IN PROGRESS
+I find that left wing parties submit bills mentioning Trump a lot more, focusing on a range of topics (security, tariffs, authoritarianism, ukraine, palestine), while right wing parties focus on tariffs. Left wing parties take the stance that the governemnt should stand up to Trump, step up it's international commitments and collaborate more closely with the EU. Right wing parties take the stance that the government should cooperate with the Trump administration or follow its policies.
