@@ -1,0 +1,229 @@
+---
+title: "Trump polarisiert auch das Schweizer Parlament"
+subtitle: "Forschungsseminar Politischer Datenjournalismus (FS 2025)"
+author: "Lucas Moser"
+format:
+  pdf:
+    number-sections: false
+    highlight-style: github
+    toc-location: body
+    cap-location: top
+    page-layout: full
+    embed-resources: true
+    self-contained-math: true
+    toc-expand: true
+editor: visual
+execute:
+  echo: false
+  warning: false
+knitr:
+  opts_chunk:
+    message: false
+---
+
+```{r}
+#Load and prepare data (MPs' bills mentioning Trump from Swiss Parliament API through swissparl package)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(huxtable)
+library(swissparl)
+library(xlsx)
+library(stringr)
+
+party_colors = c("SP" = "#F0554D", "Mitte" = "#B56100", "GPS" = "#84B547", "SVP" = "#4B8A3E", "FDP" = "#3872B5")
+if (FALSE) {   #pepare bill data for manual assignment of topics and stances
+dtb = get_data(table = "Business", SubmissionDate = ">2024-11-04", Language = "DE")
+dtb = dtb[which(!(dtb$BusinessTypeName %in% c("Geschäft des Bundesrates", "Petition", "Standesinitiative",
+                                              "Geschäft des Parlaments"))),c(3, 5, 7, 12, 13, 20, 31)]
+dtb$text = paste(dtb$Title, dtb$SubmittedText, sep = ":")
+dtb$text = clean_text(paste(dtb$text, dtb$ReasonText))
+dtb = dtb[, c(1:2, 6:8)]
+colnames(dtb) = c("id", "type", "mp", "date", "text")
+dtb = dtb[which(grepl("Trump", dtb$text)),]
+
+dtm = get_data("MemberParlGroup", Language = "DE")
+dtm$name = paste(dtm$LastName, dtm$FirstName)
+dtm = dtm[, c(24, 17)]
+
+dtb = left_join(dtb, dtm, by = join_by(mp == name))[, c(1:3, 6, 4, 5)]
+colnames(dtb)[4] = "party"
+dtb$party = substr(dtb$party, 10, nchar(dtb$party))
+dtb$party[c(8, 20, 25, 26)] = c("S", "G", "RL", "G")
+dtb$party = case_match(dtb$party, "G" ~ "GPS", "M-E" ~ "Mitte", "RL" ~ "FDP", "S" ~ "SP", "V" ~ "SVP")
+dtb$topic = rep("")
+dtb$stance = rep("")
+dtb = dtb[, c(1:5, 7:8, 6)]
+
+write.xlsx(dtb, "bills.xlsx")   #assign topics and stances by hand
+}
+```
+
+```{r}
+#load full data
+dtb = read.xlsx("bills.xlsx", sheetIndex = 1)
+dtb = dtb[which(dtb$topic != "x"),]    #exclude not primarily about trump
+
+#Arten von Geschäften:
+#sort(table(dtb$type), decreasing = T)
+
+#Häufigste Parlamentarier:innen
+#sort(table(dtb$mp), decreasing = T)
+
+#Sessionen
+dtb$month = factor(case_match(substr(as.character(dtb$date), 6, 7),
+                              "12" ~ "Dezember 2024", "03" ~ "März 2025", "05" ~ "Mai 2025", "06" ~ "Juni 2025"),
+                   levels = rev(c("Dezember 2024", "März 2025", "Mai 2025", "Juni 2025")))
+dts = data.frame(table(dtb$month))
+colnames(dts) = c("Monat", "count")
+plot_sessions = ggplot(dts) +
+  geom_segment(aes(x=Monat, xend=Monat, y=0, yend=count)) +
+  geom_point(aes(x=Monat, y=count), size=3 ) +
+  coord_flip() +
+  scale_y_continuous(expand = c(0.02,0)) +
+  theme(
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.spacing = unit(0.1, "lines"),
+    strip.text.x = element_text(size = 8),
+    aspect.ratio = 0.01
+  ) + theme_minimal() +
+  labs(title = "Anzahl Trump erwähnende Vorstösse nach Session", x = "", y = "")
+
+#Parteien
+dtb$party = factor(dtb$party, levels = names(sort(table(dtb$party), decreasing = T)))
+#table(dtb$party)
+
+#Themen
+topics = unname(unlist(str_split(str_c(dtb$topic, collapse = ", "), ", ")))
+#sort(table(topics), decreasing = T)
+
+
+#Themen nach Partei
+dtb_topics = data.frame(topic = rep(names(sort(table(topics), decreasing = T)), 5),
+                        party = rep(c("GPS", "SP", "Mitte", "FDP", "SVP"), each = length(unique(topics))))
+dtb_topics$value = mapply(FUN = function(x,y) {length(grep(x, unname(unlist(str_split(
+  str_c(dtb$topic[which(dtb$party == y)], collapse = ", "), ", ")))))}, dtb_topics$topic, dtb_topics$party)
+
+topics_g = case_match(topics, "transgender" ~ "Transrechte", "banking" ~ "Banking",
+                              "communication" ~ "Kommunikation", "socialmedia" ~ "Social Media", "ukraine" ~ "Ukraine",
+                              "authoritarianism" ~ "Autoritarismus", "palestine" ~ "Palästina", "tariffs" ~ "Zölle",
+                              "international" ~ "Internationale Organisationen", "security" ~ "Sicherheit")
+
+dtb_topics$topic = case_match(dtb_topics$topic, "transgender" ~ "Transrechte", "banking" ~ "Banking",
+                              "communication" ~ "Kommunikation", "socialmedia" ~ "Social Media", "ukraine" ~ "Ukraine",
+                              "authoritarianism" ~ "Autoritarismus", "palestine" ~ "Palästina", "tariffs" ~ "Zölle",
+                              "international" ~ "Internationale Organisationen", "security" ~ "Sicherheit")
+dtb_topics$topic = factor(dtb_topics$topic, levels = names(sort(table(topics_g), decreasing = F)))
+dtb_topics$party = factor(dtb_topics$party, levels = names(sort(table(dtb$party), decreasing = T)))
+
+plot_topics = ggplot(dtb_topics) +
+  geom_segment( aes(x=topic, xend=topic, y=0, yend=value, color=party)) +
+  geom_point( aes(x=topic, y=value, color=party), size=3 ) +
+  scale_color_manual(values = party_colors) +
+  coord_flip() +
+  scale_y_continuous(expand = c(0.02,0), breaks = 0:6, minor_breaks = 0:6) +
+  theme(
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.spacing = unit(0.1, "lines"),
+    strip.text.x = element_text(size = 8)
+  ) + theme_minimal() +
+  labs(title = "Anzahl Trump erwähnende Vorstösse nach Partei und Thema", 
+       x = "", y = "") +
+  guides(color = "none") +
+  facet_wrap(~party, ncol=2, scale="free_y", labeller = labeller(party = 
+    c("GPS" = "GPS (15 Vorstösse)", "SP" = "SP (14 Vorstösse)", "SVP" = "SVP (4 Vorstösse)",
+      "Mitte" = "Mitte (2 Vorstösse)", "FDP" = "FDP (1 Vorstoss)")))
+
+
+#Haltungen
+dtb$stance = factor(case_match(dtb$stance, c("divestment", "europe") ~ "Neuorientierung",
+                               "confrontation" ~ "Konfrontation", "preparedness" ~ "Bereitschaft",
+                               "stepping up" ~ "Kompensation", c("following", "cooperation") ~ "Entgegenkommen"),
+                    levels = c("Neuorientierung", "Bereitschaft", "Kompensation", "Konfrontation", "Entgegenkommen"))
+#table(dtb$stance)
+#table(dtb$stance, dtb$party)
+
+dtb2 = na.omit(dtb)
+dtb2$party = factor(dtb2$party, levels = c("GPS", "SP", "Mitte", "FDP", "SVP"))
+dtb2$stance = factor(dtb2$stance, levels = c("Neuorientierung", "Kompensation", "Konfrontation", "Bereitschaft", 
+                                             "Entgegenkommen"))
+colnames(dtb2)[c(4,7)] = c("Partei", "Haltung")
+
+dtb_stances = dtb2 %>% group_by(Haltung, Partei, .drop = F) %>% summarise(count = n(), .groups = "drop")
+plot_stances = ggplot(dtb_stances, aes(fill = Partei, y = count, x = Haltung)) +
+  geom_bar(position = "dodge",stat = "identity") + scale_fill_manual(values = party_colors) +
+  scale_y_continuous(expand = c(0,0), limits = c(0,8)) +
+  labs(title = "Anzahl Trump erwähnende Vorstösse nach Partei und Haltung", y = "")
+
+
+#Wähler:innen (Leewas Umfrage: https://drive.google.com/file/d/1Z0MjrN-ErJHZbY73tnNGiG7drELZrR7Y/view)
+dtv = data.frame(Partei = factor(rep(c("FDP", "Mitte", "SP", "SVP", "GPS"), 4),
+                                    levels = c("GPS", "SP", "Mitte", "FDP", "SVP")),
+                    Frage = factor(rep(c("Trump", "Zollpolitik", "Kürzungen Entwicklungshilfe", "F-35-Kauf"), each = 5),
+                                   levels = c("Trump", "Zollpolitik", "Kürzungen Entwicklungshilfe", "F-35-Kauf")),
+                    value1 = c(17, 13, 5, 13, 4, 19, 17, 10, 23, 10,
+                               36, 31, 14, 28, 12, 25, 26, 21, 16, 22),
+                    value2 = c(68, 80, 90, 46, 91, 73, 78, 84, 49, 84,
+                               42, 54, 80, 19, 82, 30, 36, 63, 35, 67))
+dtv$value = (dtv$value1 + dtv$value2) / 100
+dtv$value_pos = 1 - dtv$value
+plot_voters = ggplot(dtv, aes(fill = Partei, y = value, x = Frage)) + geom_bar(position = "dodge", stat = "identity") +
+  scale_fill_manual(values = party_colors) + 
+  scale_y_continuous(labels = scales::percent, breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1),
+                     limits = c(0,1), expand = c(0,0)) +
+  labs(title = "Anteil Befragte mit (eher) negativer Einstellung zu verschiedenen Issues\nnach Parteipräferenz",
+       y = "", x = "Issue")
+
+```
+
+***Schweizer Parlamentarier:innen und Parteien reagieren unterschiedlich auf Trumps Rückkehr an die Macht. Eine Seite hat dabei mehr zu sagen.***
+
+Die Trump-Regierung hat in der Wirtschafts-, Aussen- und Migrationspolitik einen starken politischen Umschwung eingeläutet. Viele seiner Änderungen betreffen auch die Schweiz: Am „Liberation Day“ am 4. April kündigte er Einfuhrzölle in der Höhe von 41% auf alle Schweizer Importe an, deren Inkrafttreten verschob er kurz später. Seine Kürzungen der Entwicklungshilfe treffen internationale Organisationen mit Sitz in Genf. Und mit dem Kauf der F-35-Kampfjets droht eine grössere Abhängigkeit der Schweiz von der USA unter der unberechenbaren Führung Trumps. Angesichts dieser angespannten Lage stellt sich die Frage, wie Schweizer Parlamentarier auf Trumps Comeback reagieren. Eine Auswertung zeigt, dass Trump im Bundeshaus rege thematisiert wird.
+
+## Mehrheit der Trump-Vorstösse in der Frühlingssession
+
+Seit Trumps Wiederwahl im November letzten Jahres wurden im Parlament 36 Vorstösse eingereicht, die Trump thematisieren (bei insgesamt über 2300 Vorstössen), von 21 Parlamentarier:innen und drei Fraktionen (Grüne, SP und FDP). Diese setzen sich zusammen aus 27 Fragen an den Bundesrat und 9 Motionen oder Postulaten (Vorstösse, die Gesetzesänderungen anstreben). Die untenstehende Tabelle zeigt, wann die Vorstösse eingereicht wurden. Zwei Drittel der Vorstösse erfolgten in der Frühlingssession, der ersten Session nach Trumps Amtsantritt, als Trump bereits mit Zöllen und der Kürzung von Entwicklungshilfe gedroht hatte. In den nachfolgenden Sessionen wurden nur noch 4 bzw. 5 Vorstösse eingereicht. Überraschend angesichts der Tatsache, dass die angekündigten Einfuhrzölle – sofern Trump nicht wieder umschwenkt – am 9. Juli in Kraft treten sollen.
+
+```{r, fig.height=4}
+plot_sessions
+```
+
+## Grüne und SP äussern sich weitaus öfter zu Trump
+
+Die untenstehende Grafik zeigt, wie oft sich die Parteien in Bezug auf Trump zu welchen Themen äussern. Mehr als zwei Drittel der Vorstösse zu Trump kommen von den linken Parteien. SP und die Grünen äussern sich 14 bzw. 15 Mal zu einer Breite an Themen. In der Sicherheitspolitik kritisieren sie den F-35-Kauf und plädieren für mehr Zusammenarbeit mit der EU, da die USA keinen verlässlichen Schutz mehr biete. In der Aussenpolitik setzen sie sich für mehr Unterstützung für Palästina, die Ukraine und die internationalen Organisationen in Genf ein, die sich unter Trump nun alle in brenzligerer Lage befinden. Darüber hinaus sprechen die Grünen über die Gefahr von Trumps autoritärem Regieren und die SP über Regulierung von Banken und (vorwiegend amerikanischen) Social Media Konzernen, sowie über die Kommunikation zwischen dem Bundesrat und der US-Regierung.
+
+Auf der bürgerlichen Seite hingegen liegen nur sieben Vorstösse zu Trump vor, vier von der SVP, zwei von der Mitte und einer von der FDP. Sie äussern sich hauptsächlich zu den Einfuhrzöllen. Darüber hinaus liegen im Bereich der internationalen Organisationen und der Transrechte zwei bzw. ein SVP-Vorstoss vor, die eine Nachahmung der Trump-Politik fordern: Die Schweiz soll aus der WHO austreten, von der OECD-Mindeststeuer ablassen und die medizinischen Behandlungsmöglichkeiten von transgender Jugendlichen einschränken.
+
+```{r, fig.height=10, fig.width=10}
+plot_topics
+```
+
+## Die Bürgerlichen Parteien wollen sich nicht gegen Trump auflehnen
+
+Neben den drei Vorstössen der SVP, die fordern, Trumps Politik zu übernehmen, äussern sich auch die anderen Vorstösse der Bürgerlichen nicht kritisch gegenüber dem US-Präsidenten. Sie plädieren entweder für Kooperation mit den USA oder dafür, dass sich der Bundesrat auf Trumps erratische Politik vorbereitet. Wie man erwarten kann, nehmen die Vorstösse der linken Parteien die entgegengesetzte Haltung an. Sie äussern sich auch für Bereitschaft des Bundesrats, darüber hinaus aber auch für Konfrontation gegenüber Trump (beispielsweise durch Regulierung der Social Media Konzerne, Stärkung von Diversity-Policies oder Einführung von Gegenzöllen), dafür dass die Schweiz die ausfallenden Hilfeleistungen der USA kompensiert und für eine Neuorientierung der Schweiz, weg von der USA und hin zu mehr Zusammenarbeit mit der EU.
+
+```{r}
+plot_stances
+```
+
+## Die Schweizer Bevölkerung sieht Trump und seine Politik kritisch
+
+Während Parlamentarier:innen und Parteien unterschiedlich auf Trump reagieren, ist die Haltung der Schweizer Bevölkerung weniger gespalten. Grosse Mehrheiten von Sympathisant:innen von Grünen bis FDP haben eine negative oder eher negative Einstellung zu Trump, seiner Zollpolitik und seinen Kürzungen der Entwicklungshilfe. Auch eine Mehrheit bei der SVP sieht Trump und seine Zollpolitik negativ. Mit ihrer zurückhaltenden Haltung politisieren die bürgerlichen Parteien also an ihrer Basis vorbei.
+
+```{r, fig.width=8}
+plot_voters
+```
+
+## Quellen
+
+Das Schweizer Parlament (2025): Web Services of the Swiss Parliament (https://ws-old.parlament.ch/)
+
+LeeWas GmbH (2025): Umfrage zu Donald Trump (https://drive.google.com/file/d/1Z0MjrN-ErJHZbY73tnNGiG7drELZrR7Y/view)
+
+## Validität
+
+Die Daten zu den parlamentarischen Vorstössen wurden mit dem R-package swissparl von der API der Parlamentsdienste bezogen. Es wurden alle Vorstösse, die das Stichwort „Trump“ enthalten ausgewählt. Es ist also möglich, dass Vorstösse nicht analysiert wurden, die zwar Trumps Regierung thematisieren, ihn aber nicht direkt nennen. Die Vorstösse wurden von mir von Hand den Themen und Haltungen zugewiesen. Ich habe drei Vorstösse ausgeschlossen, die Trump nur nebensächlich erwähnen (bzw. sich nicht zu seiner Politik äussern), für den Rest der Vorstösse war die Zuteilung meist trivial. Trotzdem ist es möglich, dass jemand anderes eine leicht abweichende Zuteilung machen würde, was die Resultate beeinflussen würde.
+
+Die Umfragedaten zur Einstellungen der Schweizer Bevölkerung zu Trump stammen aus der „Umfrage zu Donald Trump“ von LeeWas. An der Umfrage teilnehmen konnten Leser:innen von 20 Minuten und Tamedia-Zeitungen. Daher handelt es sich nicht um eine Zufallsstichprobe, die Resultate wurden aber nach soziodemografischen Variablen gewichtet (Geschlecht, Parteipräferenz, Sprachregion, Siedlungstyp). Der Stichprobenfehler beträgt 1.7 Prozentpunkte.
